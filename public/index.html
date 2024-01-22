@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRUD App</title>
+</head>
+<body>
+
+  <h1>CRUD App</h1>
+
+  <!-- Form to create a new item -->
+  <form id="createForm">
+    <label for="title">Title:</label>
+    <input type="text" id="title" name="title" required>
+    
+    <label for="description">Description:</label>
+    <input type="text" id="description" name="description" required>
+
+    <button type="submit">Create Item</button>
+  </form>
+
+  <!-- Display all items -->
+  <div id="itemsContainer">
+    <h2>All Items:</h2>
+    <ul id="itemsList"></ul>
+  </div>
+
+  <script>
+    // Function to fetch all items from the server
+    async function fetchItems() {
+      
+      const response = await fetch('http://localhost:5000/items');
+
+      const items = await response.json();
+      return items;
+    }
+
+    // Function to render items on the page
+    function renderItems(items) {
+      const itemsList = document.getElementById('itemsList');
+      itemsList.innerHTML = '';
+
+      items.forEach(item => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `${item.id}: ${item.title} - ${item.description}`;
+        itemsList.appendChild(listItem);
+      });
+    }
+
+    // Function to handle form submission (create item)
+    async function handleCreateForm(event) {
+      event.preventDefault();
+
+      const form = event.target;
+      const title = form.title.value;
+      const description = form.description.value;
+
+      const response = await fetch('http://localhost:5000/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title, description }),
+      });
+
+      if (response.ok) {
+        console.log('Item created successfully');
+        // Fetch and render updated items after creating
+        const updatedItems = await fetchItems();
+        renderItems(updatedItems);
+      } else {
+        console.error('Error creating item');
+      }
+    }
+
+    // Initialize the app
+    async function init() {
+      const createForm = document.getElementById('createForm');
+      createForm.addEventListener('submit', handleCreateForm);
+
+      // Fetch and render items when the page loads
+      const initialItems = await fetchItems();
+      renderItems(initialItems);
+    }
+
+    // Run the app
+    init();
+  </script>
+
+</body>
+</html>
