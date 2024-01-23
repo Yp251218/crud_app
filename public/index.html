@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRUD App</title>
 </head>
+
 <body>
 
   <h1>CRUD App</h1>
@@ -13,11 +15,32 @@
   <form id="createForm">
     <label for="title">Title:</label>
     <input type="text" id="title" name="title" required>
-    
+
     <label for="description">Description:</label>
     <input type="text" id="description" name="description" required>
 
+    <label for="category">Category:</label>
+    <input type="text" id="category" name="category" required>
+
     <button type="submit">Create Item</button>
+  </form>
+
+  <!-- Update form (initially hidden) -->
+  <form id="updateForm" style="display: none;">
+    <h2>Update Item:</h2>
+    <label for="updateId">Item ID:</label>
+    <input type="text" id="updateId" name="updateId" readonly>
+
+    <label for="updateTitle">New Title:</label>
+    <input type="text" id="updateTitle" name="updateTitle" required>
+
+    <label for="updateDescription">New Description:</label>
+    <input type="text" id="updateDescription" name="updateDescription" required>
+
+    <label for="updateCategory">New Category:</label>
+    <input type="text" id="updateCategory" name="updateCategory" required>
+
+    <button type="submit">Update Item</button>
   </form>
 
   <!-- Display all items -->
@@ -27,25 +50,30 @@
   </div>
 
   <script>
-    // Function to fetch all items from the server
-    async function fetchItems() {
-      
-      const response = await fetch('http://localhost:5000/items');
-
+  
+    async function fetchItems(category = '') {
+      const url = category ? `http://localhost:5000/allPosts?category=${category}` : 'http://localhost:5000/allPosts';
+      const response = await fetch(url);
       const items = await response.json();
       return items;
     }
 
-    // Function to render items on the page
-    function renderItems(items) {
-      const itemsList = document.getElementById('itemsList');
-      itemsList.innerHTML = '';
+    function createButtons(item) {
+      const buttonContainer = document.createElement('div');
 
-      items.forEach(item => {
-        const listItem = document.createElement('li');
-        listItem.textContent = `${item.id}: ${item.title} - ${item.description}`;
-        itemsList.appendChild(listItem);
-      });
+      // Create and append "Edit" button
+      const editButton = document.createElement('button');
+      editButton.textContent = 'Edit';
+      editButton.addEventListener('click', () => showUpdateForm(item));
+      buttonContainer.appendChild(editButton);
+
+      // Create and append "Delete" button
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = 'Delete';
+      deleteButton.addEventListener('click', () => deleteItem(item.id));
+      buttonContainer.appendChild(deleteButton);
+
+      return buttonContainer;
     }
 
     // Function to handle form submission (create item)
@@ -55,13 +83,14 @@
       const form = event.target;
       const title = form.title.value;
       const description = form.description.value;
+      const category = form.category.value;
 
-      const response = await fetch('http://localhost:5000/create', {
+      const response = await fetch('http://localhost:5000/posts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ title, description }),
+        body: JSON.stringify({ title, description, category }),
       });
 
       if (response.ok) {
@@ -74,10 +103,104 @@
       }
     }
 
+    async function handleUpdateForm(event) {
+      event.preventDefault();
+
+      const form = event.target;
+      const id = form.updateId.value;
+      const title = form.updateTitle.value;
+      const description = form.updateDescription.value;
+      const category = form.updateCategory.value;
+
+      // Call the updateItem function to update the item
+      await updateItem(id, { title, description, category });
+      hideUpdateForm();
+    }
+
+    // Function to display the update form with item values
+    function showUpdateForm(item) {
+      const updateForm = document.getElementById('updateForm');
+      updateForm.style.display = 'block';
+
+      const updateIdInput = document.getElementById('updateId');
+      const updateTitleInput = document.getElementById('updateTitle');
+      const updateDescriptionInput = document.getElementById('updateDescription');
+      const updateCategoryInput = document.getElementById('updateCategory');
+
+      updateIdInput.value = item.id;
+      updateTitleInput.value = item.title;
+      updateDescriptionInput.value = item.description;
+      updateCategoryInput.value = item.category;
+    }
+
+    // Function to hide the update form
+    function hideUpdateForm() {
+      const updateForm = document.getElementById('updateForm');
+      updateForm.style.display = 'none';
+    }
+
+    // Function to render items on the page with buttons
+    function renderItems(items) {
+      const itemsList = document.getElementById('itemsList');
+      itemsList.innerHTML = '';
+
+      items.forEach(item => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `${item.id}: ${item.title} - ${item.description} ${item.category}`;
+
+        // Create and append buttons for each item
+        const buttonsContainer = createButtons(item);
+        listItem.appendChild(buttonsContainer);
+
+        itemsList.appendChild(listItem);
+      });
+    }
+
+    // Function to update an item
+    async function updateItem(itemId, updatedData) {
+      console.log("Enter in function");
+      const response = await fetch(`http://localhost:5000/update/${itemId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (response.ok) {
+        console.log('Item updated successfully');
+        // Fetch and render updated items after updating
+        const updatedItems = await fetchItems();
+        renderItems(updatedItems);
+      } else {
+        console.error('Error updating item');
+      }
+    }
+
+    // Function to delete an item
+    async function deleteItem(itemId) {
+      const response = await fetch(`http://localhost:5000/delete/${itemId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        console.log('Item deleted successfully');
+        // Fetch and render updated items after deleting
+        const updatedItems = await fetchItems();
+        renderItems(updatedItems);
+      } else {
+        console.error('Error deleting item');
+      }
+    }
+
+
     // Initialize the app
     async function init() {
       const createForm = document.getElementById('createForm');
       createForm.addEventListener('submit', handleCreateForm);
+
+      const updateForm = document.getElementById('updateForm');
+      updateForm.addEventListener('submit', handleUpdateForm);
 
       // Fetch and render items when the page loads
       const initialItems = await fetchItems();
@@ -89,4 +212,5 @@
   </script>
 
 </body>
+
 </html>
